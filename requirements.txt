@@ -1,0 +1,21 @@
+# FastAPI & ASGI Server
+fastapi[all]      # FastAPI framework (Pydantic, Uvicorn, Starlette)
+uvicorn[standard] # ASGI server para rodar FastAPI
+
+# Database
+sqlalchemy        # ORM para database handling
+alembic           # Database migrations
+asyncpg           # Async PostgreSQL driver
+
+# Authentication
+passlib[bcrypt]   # Secure password hashing
+python-jose       # JWT token handling
+python-dotenv     # Environment variable management
+
+# WebSockets & WebRTC
+websockets        # WebSockets support for FastAPI
+aiortc           # WebRTC implementation for voice/video calls
+
+# Utility
+httpx            # Async HTTP client for external requests
+pydantic         # Data validation
