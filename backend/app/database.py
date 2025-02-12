@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 import os
 from dotenv import load_dotenv
 
-dotenvPath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),"scripts/.env")
+dotenvPath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),".env")
 load_dotenv(dotenvPath, override=True)
 
 DATA_BASE_ASYNC  = os.getenv("DATABASE_URL")
@@ -28,5 +28,5 @@ SessionLocal = sessionmaker(bind=engine_sync, autocommit=False, autoflush=False)
 Base = declarative_base()
 
 async def get_db():
-    async with AsyncSessionLocal as session:
+    async with AsyncSessionLocal() as session:
         yield session
