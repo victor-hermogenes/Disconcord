@@ -1,7 +1,7 @@
-from sqlalchemy import Column, String, Integer, DateTime
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-from app.database import Base
+from sqlalchemy.sql import func
+from backend.app.database import Base
 
 class User(Base):
     __tablename__ = "users"
@@ -10,6 +10,6 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)
     email = Column(String, unique=True, nullable=True, index=True)
     password_hash = Column(String, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, server_default=func.now())
 
     rooms = relationship("Room", back_populates="owner", cascade="all, delete-orphan")
