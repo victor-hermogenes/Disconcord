@@ -19,3 +19,4 @@ aiortc           # WebRTC implementation for voice/video calls
 # Utility
 httpx            # Async HTTP client for external requests
 pydantic         # Data validation
+psycopg2-binary  # Sync PostgreSQL driver (usado para Alembic migrations)
