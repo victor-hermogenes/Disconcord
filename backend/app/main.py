@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from backend.app.routes.auth import router as auth_router
+from backend.app.routes.authRoutes import router as auth_router
 
 app = FastAPI(title="Disconcord API", version="1.0.0", description="A Discord Clone API")
 
