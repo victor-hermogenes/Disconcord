@@ -171,4 +171,8 @@ cython_debug/
 .pypirc
 
 # migrations versions
-backend/migrations/versions
+migrations/versions
+
+# localhost config
+localhost-key.pem
+localhost.pem
