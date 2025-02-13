@@ -33,51 +33,99 @@
         .room:hover {
             background-color: #5B6EAE;
         }
+        #logout {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: red;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+        #logout:hover {
+            background-color: darkred;
+        }
     </style>
 </head>
 <body>
 
-    <h2>Available Voice Rooms</h2>
+    <h2>Canais de vóz disponíveis</h2>
     <div class="room-list" id="roomList">
-        <p>Loading rooms...</p>
+        <p>Carregando canais...</p>
     </div>
+
+    <button id="logout" onclick="logout()">Logout</button>
+
+    <script>
+        async function requestStorageAccess() {
+            if (document.hasStorageAccess) {
+                try {
+                    const access = await document.requestStorageAccess();
+                    console.log("✅ Storage access granted:", access);
+                } catch (error) {
+                    console.warn("⚠️ Storage access denied:", error);
+                }
+            }
+        }
+    
+        requestStorageAccess();
+    </script>
 
     <script>
         async function fetchRooms() {
             const token = localStorage.getItem("access_token");
             if (!token) {
-                window.location.href = "/"; // Redirect to login if no token
+                window.location.href = "/";
                 return;
             }
 
-            const response = await fetch("/rooms", {
-                method: "GET",
-                headers: { "Authorization": `Bearer ${token}` }
-            });
+            try {
+                const response = await fetch("/rooms", {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
 
-            if (!response.ok) {
-                document.getElementById("roomList").innerHTML = "<p>Error fetching rooms.</p>";
-                return;
+                if (!response.ok) {
+                    document.getElementById("roomList").innerHTML = "<p>Error fetching rooms.</p>";
+                    return;
+                }
+
+                const rooms = await response.json();
+                const roomList = document.getElementById("roomList");
+                roomList.innerHTML = ""; 
+
+                if (rooms.length === 0) {
+                    roomList.innerHTML = "<p>No rooms available.</p>";
+                    return;
+                }
+
+                rooms.forEach(room => {
+                    const roomDiv = document.createElement("div");
+                    roomDiv.className = "room";
+                    roomDiv.innerText = room.name;
+                    roomDiv.onclick = () => joinRoom(room.id);
+                    roomList.appendChild(roomDiv);
+                });
+
+            } catch (error) {
+                console.error("Error fetching rooms:", error);
+                document.getElementById("roomList").innerHTML = "<p>Failed to load rooms.</p>";
             }
-
-            const rooms = await response.json();
-            const roomList = document.getElementById("roomList");
-            roomList.innerHTML = ""; // Clear previous content
-
-            rooms.forEach(room => {
-                const roomDiv = document.createElement("div");
-                roomDiv.className = "room";
-                roomDiv.innerText = room.name;
-                roomDiv.onclick = () => joinRoom(room.id);
-                roomList.appendChild(roomDiv);
-            });
         }
 
         function joinRoom(roomId) {
-            window.location.href = `/voice-room/${roomId}`; // Redirect to WebSocket page
+            window.location.href = `/voice-room/${roomId}`; 
         }
 
-        // Fetch rooms on load
+        function logout() {
+            localStorage.removeItem("access_token");
+            window.location.href = "/"; 
+        }
+
         fetchRooms();
     </script>
 
