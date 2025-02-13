@@ -1,14 +1,4 @@
-// Fetch token from localStorage
-const accessToken = localStorage.getItem("access_token");
-
-// Ensure we have a valid token before connecting
-if (!accessToken) {
-    alert("You must be logged in to join voice chat!");
-    window.location.href = "/login.html";
-}
-
-// Connect WebSocket with Authorization
-const ws = new WebSocket(`wss://yourserver.com/voice?token=${accessToken}`);
+const ws = new WebSocket("wss://yourserver.com/voice");
 
 ws.onopen = () => {
     console.log("Connected to WebSocket server");
@@ -18,23 +8,23 @@ ws.onerror = (error) => {
     console.error("WebSocket error:", error);
 };
 
-// Example of sending API requests with Auth Header
 async function fetchUserProfile() {
     try {
-        const response = await fetch("/api/user/profile", {
+        const response = await fetch("/auth/me", {
             method: "GET",
-            headers: { 
-                "Authorization": `Bearer ${accessToken}`,
-                "Content-Type": "application/json"
-            }
+            credentials: "include"  
         });
+
+        if (!response.ok) {
+            throw new Error("Unauthorized");
+        }
 
         const data = await response.json();
         console.log("User Profile:", data);
     } catch (error) {
         console.error("Error fetching profile:", error);
+        window.location.href = "/"; 
     }
 }
 
-// Call function when the script loads
 fetchUserProfile();
