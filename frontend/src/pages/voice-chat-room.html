@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disconcord - Voice & Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #2C2F33;
+            color: white;
+        }
+
+        .chat-container {
+            width: 400px;
+            background: #23272A;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            height: 400px;
+            overflow-y: auto;
+        }
+
+        .input-container {
+            display: flex;
+            width: 100%;
+        }
+
+        input {
+            flex-grow: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 8px;
+            background-color: #7289DA;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #5B6EAE;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Voice Chat Room</h2>
+
+    <div class="chat-container" id="chat">
+        <p>Loading chat...</p>
+    </div>
+
+    <div class="input-container">
+        <input type="text" id="chatInput" placeholder="Type a message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        const roomId = new URLSearchParams(window.location.search).get("room_id");
+        const accessToken = localStorage.getItem("access_token");
+
+        if (!accessToken) {
+            alert("You must be logged in!");
+            window.location.href = "/";
+        }
+
+        const ws = new WebSocket(`ws://localhost:8000/chat/ws/${roomId}?token=${accessToken}`);
+
+        ws.onmessage = (event) => {
+            const chatBox = document.getElementById("chat");
+            const message = document.createElement("p");
+            message.textContent = event.data;
+            chatBox.appendChild(message);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        async function sendMessage() {
+            const input = document.getElementById("chatInput");
+            ws.send(input.value);
+            input.value = "";
+        }
+
+        async function loadPreviousMessages() {
+            const response = await fetch(`/chat/${roomId}/messages`, {
+                method: "GET",
+                headers: { "Authorization": `Bearer ${accessToken}` }
+            });
+
+            const messages = await response.json();
+            const chatBox = document.getElementById("chat");
+            chatBox.innerHTML = "";
+
+            messages.reverse().forEach(msg => {
+                const message = document.createElement("p");
+                message.textContent = msg;
+                chatBox.appendChild(message);
+            });
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function requestStorageAccess() {
+            if (document.hasStorageAccess) {
+                try {
+                    await document.requestStorageAccess();
+                    console.log("✅ Storage access granted.");
+                } catch (error) {
+                    console.warn("⚠️ Storage access denied:", error);
+                }
+            }
+        }
+        requestStorageAccess();
+
+
+        loadPreviousMessages();
+    </script>
+
+</body>
+
+</html>
