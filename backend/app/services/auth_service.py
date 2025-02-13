@@ -4,7 +4,7 @@ from jose import jwt, JWTError
 import os
 from dotenv import load_dotenv
 
-dotenvPath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),".env")
+dotenvPath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),".env")
 load_dotenv(dotenvPath)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -17,7 +17,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    raise ValueError("SECRET_KEY não encontrado no arquivo .env!")
+    raise ValueError(f"SECRET_KEY não encontrado no arquivo .env! {dotenvPath}")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
