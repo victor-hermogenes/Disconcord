@@ -2,15 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from sqlalchemy.orm import Session
 from backend.app.core.database import SessionLocal
 from backend.app.models.chatModels import ChatMessage
-from backend.app.models.roomModels import Room
 from backend.app.models.userModels import User
+from backend.app.models.roomModels import Room
 from backend.app.services.authService import decode_access_token
 from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
 from typing import List
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+# Store active connections
+active_connections = {}
 
 def get_db():
     db = SessionLocal()
@@ -31,66 +33,32 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     
     return user
 
-class MessageCreate(BaseModel):
-    message: str
-
-class MessageResponse(BaseModel):
-    id: int
-    room_id: int
-    user_id: int
-    message: str
-    timestamp: str
-
-
-@router.post("/{room_id}/send", response_model=MessageResponse)
-def send_message(
-    room_id: int,
-    message_data: MessageCreate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    room = db.query(Room).filter(Room.id == room_id).first()
-    if not room:
-        raise HTTPException(status_code=404, detail="Sala não encontrada")
-
-    new_message = ChatMessage(
-        room_id=room_id,
-        user_id=current_user.id,
-        message=message_data.message
-    )
-    
-    db.add(new_message)
-    db.commit()
-    db.refresh(new_message)
-    
-    return new_message
-
-
-@router.get("/{room_id}/messages", response_model=List[MessageResponse])
-def get_messages(room_id: int, db: Session = Depends(get_db)):
-    messages = db.query(ChatMessage).filter(ChatMessage.room_id == room_id).order_by(ChatMessage.timestamp).all()
-    
-    if not messages:
-        return []
-
-    return messages
-
-
-active_connections = {}
-
 @router.websocket("/ws/{room_id}")
-async def websocket_endpoint(websocket: WebSocket, room_id: int):
+async def chat_websocket(websocket: WebSocket, room_id: int, token: str):
     await websocket.accept()
-
+    
+    db = next(get_db())
+    user = get_current_user(token, db)
+    
     if room_id not in active_connections:
         active_connections[room_id] = []
 
     active_connections[room_id].append(websocket)
-
     try:
         while True:
             data = await websocket.receive_text()
-            for connection in active_connections[room_id]:
-                await connection.send_text(data)
+            new_message = ChatMessage(content=data, user_id=user.id, room_id=room_id)
+            db.add(new_message)
+            db.commit()
+
+            # Broadcast message to all clients in the same room
+            for conn in active_connections[room_id]:
+                await conn.send_text(f"{user.username}: {data}")
+
     except WebSocketDisconnect:
         active_connections[room_id].remove(websocket)
+
+@router.get("/{room_id}/messages", response_model=List[str])
+def get_chat_messages(room_id: int, db: Session = Depends(get_db)):
+    messages = db.query(ChatMessage).filter(ChatMessage.room_id == room_id).order_by(ChatMessage.timestamp.desc()).limit(50).all()
+    return [f"{msg.user.username}: {msg.content}" for msg in messages]
