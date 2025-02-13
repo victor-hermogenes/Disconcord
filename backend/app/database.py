@@ -27,6 +27,9 @@ SessionLocal = sessionmaker(bind=engine_sync, autocommit=False, autoflush=False)
 
 Base = declarative_base()
 
+import backend.app.models.userModel
+import backend.app.models.roomModel
+
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
