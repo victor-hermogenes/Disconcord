@@ -19,6 +19,10 @@ cryptography      # Secure encryption functions
 websockets        # WebSockets support for FastAPI
 aiortc            # WebRTC implementation for voice/video calls
 
+# Audio Processing (For Voice Chat)
+sounddevice       # Real-time audio capture and playback
+numpy            # Numerical operations (needed for sound processing)
+
 # Utility & Async Handling
 httpx            # Async HTTP client for external requests
 pydantic         # Data validation and schema definition
