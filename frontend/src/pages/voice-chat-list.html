@@ -58,21 +58,6 @@
     <button id="logout" onclick="logout()">Logout</button>
 
     <script>
-        async function requestStorageAccess() {
-            if (document.hasStorageAccess) {
-                try {
-                    const access = await document.requestStorageAccess();
-                    console.log("✅ Storage access granted:", access);
-                } catch (error) {
-                    console.warn("⚠️ Storage access denied:", error);
-                }
-            }
-        }
-    
-        requestStorageAccess();
-    </script>
-
-    <script>
         async function fetchRooms() {
             const token = localStorage.getItem("access_token");
             if (!token) {
@@ -118,7 +103,7 @@
         }
 
         function joinRoom(roomId) {
-            window.location.href = `/voice-room/${roomId}`; 
+            window.location.href = `/voice-chat-room.html?roomId=${roomId}`; 
         }
 
         function logout() {
