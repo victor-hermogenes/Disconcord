@@ -51,7 +51,7 @@
 <body>
 
     <div class="login-container">
-        <h2>Login to Disconcord</h2>
+        <h2>Disconcord Login</h2>
         <input type="text" id="username" placeholder="Username">
         <input type="password" id="password" placeholder="Password">
         <button onclick="login()">Login</button>
@@ -62,21 +62,20 @@
         async function login() {
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
-    
-            const formData = new FormData();
-            formData.append("username", username);
-            formData.append("password", password);
-    
+
             const response = await fetch("/auth/login", {
                 method: "POST",
-                body: formData // ✅ Sending as `multipart/form-data`
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ username, password }) 
             });
-    
+
             const data = await response.json();
-    
+
             if (response.ok) {
                 localStorage.setItem("access_token", data.access_token);
-                window.location.href = "/voice-chat"; // Redirect to voice chat
+                window.location.href = "/voice-chat";
             } else {
                 document.getElementById("error-message").innerText = data.detail;
             }
