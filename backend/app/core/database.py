@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 import os
 from dotenv import load_dotenv
 
-dotenvPath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),".env")
+dotenvPath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),".env")
 load_dotenv(dotenvPath, override=True)
 
 DATA_BASE_ASYNC  = os.getenv("DATABASE_URL")
