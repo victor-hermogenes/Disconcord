@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,6 +16,7 @@
             background-color: #2C2F33;
             color: white;
         }
+
         .room-list {
             background: #23272A;
             padding: 20px;
@@ -23,6 +25,7 @@
             width: 300px;
             text-align: center;
         }
+
         .room {
             background-color: #7289DA;
             margin: 10px;
@@ -30,9 +33,11 @@
             border-radius: 5px;
             cursor: pointer;
         }
+
         .room:hover {
             background-color: #5B6EAE;
         }
+
         #logout {
             margin-top: 20px;
             padding: 10px;
@@ -43,11 +48,13 @@
             font-weight: bold;
             border-radius: 5px;
         }
+
         #logout:hover {
             background-color: darkred;
         }
     </style>
 </head>
+
 <body>
 
     <h2>Canais de vóz disponíveis</h2>
@@ -81,7 +88,7 @@
 
                 const rooms = await response.json();
                 const roomList = document.getElementById("roomList");
-                roomList.innerHTML = ""; 
+                roomList.innerHTML = "";
 
                 if (rooms.length === 0) {
                     roomList.innerHTML = "<p>No rooms available.</p>";
@@ -103,16 +110,18 @@
         }
 
         function joinRoom(roomId) {
-            window.location.href = `/voice-chat-room.html?roomId=${roomId}`; 
+            window.location.href = `/voice-chat-room?roomId=${roomId}`;
         }
+
 
         function logout() {
             localStorage.removeItem("access_token");
-            window.location.href = "/"; 
+            window.location.href = "/";
         }
 
         fetchRooms();
     </script>
 
 </body>
+
 </html>
