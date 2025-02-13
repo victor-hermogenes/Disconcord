@@ -4,7 +4,7 @@ from datetime import timedelta
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from backend.app.core.database import SessionLocal
-from backend.app.models.user import User
+from backend.app.models.userModels import User
 from backend.app.services.authService import (
     hash_password, verify_password, create_access_token, decode_access_token
 )
