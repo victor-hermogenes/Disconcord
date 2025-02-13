@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import timedelta
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 
 from backend.app.core.database import SessionLocal
 from backend.app.models.userModels import User
@@ -21,22 +22,28 @@ def get_db():
         db.close()
 
 
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(
-    username: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
-    db: Session = Depends(get_db)
-):
+def register(user_data: RegisterRequest, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(
-        (User.username == username) | (User.email == email)
+        (User.username == user_data.username) | (User.email == user_data.email)
     ).first()
 
     if existing_user:
         raise HTTPException(status_code=400, detail="Usuário ou email já cadastrado")
 
-    hashed_password = hash_password(password)
-    new_user = User(username=username, email=email, password_hash=hashed_password)
+    hashed_password = hash_password(user_data.password)
+    new_user = User(username=user_data.username, email=user_data.email, password_hash=hashed_password)
 
     db.add(new_user)
     db.commit()
@@ -49,7 +56,7 @@ def register(
 
 
 @router.post("/login")
-def login(user_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(user_data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == user_data.username).first()
 
     if not user or not verify_password(user_data.password, user.password_hash):

@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Form
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 from backend.app.core.database import SessionLocal
 from backend.app.models.userModels import User
 from backend.app.services.userService import UserUpdate, UserResponse
@@ -28,10 +29,13 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     
     return user
 
+class UserUpdateRequest(BaseModel):
+    email: str | None = None
+    password: str | None = None
+
 @router.get("/", response_model=list[UserResponse])
 def get_users(db: Session = Depends(get_db)):
-    users = db.query(User).all()
-    return users
+    return db.query(User).all()
 
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(user_id: int, db: Session = Depends(get_db)):
@@ -43,12 +47,11 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 @router.put("/{user_id}")
 def update_user(
     user_id: int,
-    email: str = Form(None),
-    password: str = Form(None),
+    user_data: UserUpdateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update user email and password using form-data."""
+    """Update user email and password using JSON data."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
@@ -56,10 +59,10 @@ def update_user(
     if current_user.id != user.id:
         raise HTTPException(status_code=403, detail="Não autorizado.")
 
-    if email:
-        user.email = email
-    if password:
-        user.password_hash = hash_password(password)
+    if user_data.email:
+        user.email = user_data.email
+    if user_data.password:
+        user.password_hash = hash_password(user_data.password)
 
     db.commit()
     db.refresh(user)
