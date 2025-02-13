@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
-from backend.app.services.auth_service import SECRET_KEY, ALGORITHM
+from backend.app.services.authService import SECRET_KEY, ALGORITHM
 from sqlalchemy.orm import Session
 from backend.app.core.database import SessionLocal
 from backend.app.models.user import User
