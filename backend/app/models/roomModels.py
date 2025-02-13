@@ -13,3 +13,4 @@ class Room(Base):
     rtc_session_id = Column(String, unique=True, nullable=True)
 
     owner = relationship("User", back_populates="rooms")
+    messages = relationship("ChatMessage", back_populates="room", cascade="all, delete-orphan")

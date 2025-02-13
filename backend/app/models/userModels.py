@@ -13,3 +13,4 @@ class User(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     rooms = relationship("Room", back_populates="owner", cascade="all, delete-orphan", lazy="joined")
+    messages = relationship("ChatMessage", back_populates="user", cascade="all, delete-orphan")
