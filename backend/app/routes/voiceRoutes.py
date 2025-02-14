@@ -5,11 +5,12 @@ from backend.app.models.userModels import User
 from backend.app.services.authService import decode_access_token
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer
+from typing import Dict, Set
 
 router = APIRouter(prefix="/voice", tags=["Voice Chat"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-active_connections = {}
+active_connections: Dict[int, Set[WebSocket]] = {} 
 
 def get_db():
     db = SessionLocal()
@@ -19,14 +20,14 @@ def get_db():
         db.close()
 
 async def get_current_user(websocket: WebSocket, db: Session):
-    token = websocket.query_params.get("token")
+    """Authenticate user via WebSocket token"""
+    token = websocket.headers.get("Authorization")  
     
     if not token:
         await websocket.close(code=1008)
         raise HTTPException(status_code=403, detail="Token não fornecido.")
 
-    if token.startswith("Bearer "):
-        token = token[len("Bearer "):]
+    token = token.replace("Bearer ", "") 
 
     payload = decode_access_token(token)
     if not payload:
@@ -44,30 +45,30 @@ async def get_current_user(websocket: WebSocket, db: Session):
 
 @router.websocket("/{room_id}")
 async def voice_chat(websocket: WebSocket, room_id: int):
-    db = next(get_db())
+    async with get_db() as db:  
+        user = await get_current_user(websocket, db)
 
-    user = await get_current_user(websocket, db)
-    
-    room = db.query(Room).filter(Room.id == room_id).first()
-    if not room:
-        await websocket.close(code=1008)
-        return
+        room = db.query(Room).filter(Room.id == room_id).first()
+        if not room:
+            await websocket.close(code=1008)
+            return
 
-    await websocket.accept()
-    
-    if room_id not in active_connections:
-        active_connections.setdefault(room_id, {})[user.id] = websocket
+        await websocket.accept()
 
-    try:
-        while True:
-            data = await websocket.receive_bytes()
-            await broadcast_voice(room_id, user.id, data)
-    except WebSocketDisconnect:
-        del active_connections[room_id][user.id]
-        if not active_connections[room_id]:
-            del active_connections[room_id]
+        if room_id not in active_connections:
+            active_connections[room_id] = set()
+        active_connections[room_id].add(websocket)
 
-async def broadcast_voice(room_id: int, sender_id: int, data: bytes):
-    for user_id, connection in active_connections.get(room_id, {}).items():
-        if user_id != sender_id:
+        try:
+            while True:
+                data = await websocket.receive_bytes()
+                await broadcast_voice(room_id, websocket, data)
+        except WebSocketDisconnect:
+            active_connections[room_id].remove(websocket)
+            if not active_connections[room_id]:  
+                del active_connections[room_id]
+
+async def broadcast_voice(room_id: int, sender_ws: WebSocket, data: bytes):
+    for connection in active_connections.get(room_id, set()):
+        if connection != sender_ws:
             await connection.send_bytes(data)

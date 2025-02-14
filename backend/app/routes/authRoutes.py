@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordBearer
@@ -9,6 +9,7 @@ from backend.app.models.userRegisterModels import UserRegister
 from backend.app.services.authService import (
     hash_password, verify_password, create_access_token, decode_access_token
 )
+import os
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -24,6 +25,7 @@ def get_db():
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(user_data: UserRegister, db: Session = Depends(get_db)):
+    """Registers a new user."""
     existing_user = db.query(User).filter(
         (User.username == user_data.username) | (User.email == user_data.email)
     ).first()
@@ -39,14 +41,14 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
     db.refresh(new_user)
 
     return {
-        "message": "usuário registrdao com sucesso.",
+        "message": "Usuário registrado com sucesso.",
         "user": {"id": new_user.id, "username": new_user.username, "email": new_user.email}
     }
 
 
 @router.post("/login")
 def login(user_data: UserLogin, response: Response, db: Session = Depends(get_db)):
-    """Logs in user using JSON payload."""
+    """Logs in user and returns an access token (via cookies)."""
     user = db.query(User).filter(User.username == user_data.username).first()
 
     if not user or not verify_password(user_data.password, user.password_hash):
@@ -54,12 +56,14 @@ def login(user_data: UserLogin, response: Response, db: Session = Depends(get_db
 
     access_token = create_access_token({"sub": user.username}, expires_delta=timedelta(minutes=30))
 
+    secure_flag = os.getenv("ENV") == "production"  
+
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=True,
-        samesite="None"
+        secure=secure_flag,  
+        samesite="None" if secure_flag else "Lax" 
     )
 
     return {
@@ -76,9 +80,10 @@ def logout(response: Response):
 
 
 @router.get("/me")
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    payload = decode_access_token(token)
+def get_current_user(request: Request, db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+    token = request.cookies.get("access_token", token) 
 
+    payload = decode_access_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Token expirado ou inválido.")
 

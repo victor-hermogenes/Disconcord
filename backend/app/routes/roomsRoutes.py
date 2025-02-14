@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 from backend.app.core.database import SessionLocal
 from backend.app.models.roomModels import Room
 from backend.app.models.userModels import User
-from backend.app.services.roomService import RoomCreate, RoomUpdate, RoomResponse
+from backend.app.schemas.roomSchemas import RoomCreate, RoomUpdate, RoomResponse
 from backend.app.services.authService import decode_access_token
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
+from typing import List
 
 router = APIRouter(prefix="/rooms", tags=["Rooms"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -59,8 +60,11 @@ def create_room(
     return new_room
 
 
-@router.get("/", response_model=list[RoomResponse])
-def get_all_rooms(db: Session = Depends(get_db)):
+@router.get("/", response_model=List[RoomResponse])
+def get_all_rooms(
+    current_user: User = Depends(get_current_user),  
+    db: Session = Depends(get_db)
+):
     return db.query(Room).all()
 
 
@@ -86,7 +90,8 @@ def update_room(
     if room.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Não autorizado")
 
-    if room_data.name:
+    # ✅ Only update if `name` is provided
+    if room_data.name is not None:
         room.name = room_data.name
 
     db.commit()
