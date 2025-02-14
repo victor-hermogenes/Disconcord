@@ -1,127 +1,173 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Disconcord - Voice Chat</title>
+    <title>Disconcord - Voice Chats</title>
     <style>
-        body {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
             font-family: Arial, sans-serif;
+        }
+
+        body {
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             height: 100vh;
             background-color: #2C2F33;
             color: white;
         }
 
-        .room-list {
+        .voice-container {
             background: #23272A;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
-            width: 300px;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.6);
             text-align: center;
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        h2 {
+            margin-bottom: 10px;
+        }
+
+        .room-list {
+            background-color: #1E2124;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-y: auto;
+            max-height: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .room {
-            background-color: #7289DA;
-            margin: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             padding: 10px;
+            background-color: #2C2F33;
             border-radius: 5px;
-            cursor: pointer;
         }
 
-        .room:hover {
-            background-color: #5B6EAE;
+        .room-name {
+            flex: 1;
+            text-align: left;
         }
 
-        #logout {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: red;
+        .join-button {
+            padding: 8px 12px;
+            background-color: #7289DA;
             color: white;
             border: none;
             cursor: pointer;
             font-weight: bold;
             border-radius: 5px;
+            transition: 0.3s;
         }
 
-        #logout:hover {
-            background-color: darkred;
+        .join-button:hover {
+            background-color: #5B6EAE;
+        }
+
+        #error-message {
+            color: red;
+            font-size: 14px;
+            display: none;
+        }
+
+        .loading {
+            font-size: 14px;
+            color: #aaaaaa;
         }
     </style>
 </head>
-
 <body>
 
-    <h2>Canais de vóz disponíveis</h2>
-    <div class="room-list" id="roomList">
-        <p>Carregando canais...</p>
+    <div class="voice-container">
+        <h2>Voice Chat Rooms</h2>
+        <div id="error-message"></div>
+        <div class="room-list" id="roomList">
+            <p class="loading">🔄 Loading rooms...</p>
+        </div>
     </div>
 
-    <button id="logout" onclick="logout()">Logout</button>
-
     <script>
-        async function fetchRooms() {
-            const token = localStorage.getItem("access_token");
-            if (!token) {
-                window.location.href = "/";
+        document.addEventListener("DOMContentLoaded", function () {
+            const roomList = document.getElementById("roomList");
+            const errorMessage = document.getElementById("error-message");
+            const accessToken = localStorage.getItem("access_token");
+
+            if (!accessToken) {
+                window.location.href = "/login";
                 return;
             }
 
-            try {
-                const response = await fetch("/rooms", {
-                    method: "GET",
-                    headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
+            async function fetchRooms() {
+                try {
+                    const response = await fetch("/rooms", {
+                        method: "GET",
+                        headers: { "Authorization": `Bearer ${accessToken}` }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Failed to load rooms");
                     }
-                });
 
-                if (!response.ok) {
-                    document.getElementById("roomList").innerHTML = "<p>Error fetching rooms.</p>";
-                    return;
+                    const rooms = await response.json();
+                    roomList.innerHTML = ""; // Clear loading message
+
+                    if (rooms.length === 0) {
+                        roomList.innerHTML = "<p class='loading'>No rooms available</p>";
+                        return;
+                    }
+
+                    rooms.forEach(room => {
+                        const roomElement = document.createElement("div");
+                        roomElement.classList.add("room");
+
+                        const roomName = document.createElement("span");
+                        roomName.classList.add("room-name");
+                        roomName.innerText = room.name;
+
+                        const joinButton = document.createElement("button");
+                        joinButton.classList.add("join-button");
+                        joinButton.innerText = "Join";
+                        joinButton.onclick = () => joinRoom(room.id);
+
+                        roomElement.appendChild(roomName);
+                        roomElement.appendChild(joinButton);
+                        roomList.appendChild(roomElement);
+                    });
+
+                    // Keyboard shortcut: Enter to join the first room
+                    document.addEventListener("keypress", function (event) {
+                        if (event.key === "Enter" && rooms.length > 0) {
+                            joinRoom(rooms[0].id);
+                        }
+                    });
+
+                } catch (error) {
+                    console.error("⚠️ Error fetching rooms:", error);
+                    errorMessage.innerText = "⚠️ Failed to load rooms.";
+                    errorMessage.style.display = "block";
                 }
-
-                const rooms = await response.json();
-                const roomList = document.getElementById("roomList");
-                roomList.innerHTML = "";
-
-                if (rooms.length === 0) {
-                    roomList.innerHTML = "<p>No rooms available.</p>";
-                    return;
-                }
-
-                rooms.forEach(room => {
-                    const roomDiv = document.createElement("div");
-                    roomDiv.className = "room";
-                    roomDiv.innerText = room.name;
-                    roomDiv.onclick = () => joinRoom(room.id);
-                    roomList.appendChild(roomDiv);
-                });
-
-            } catch (error) {
-                console.error("Error fetching rooms:", error);
-                document.getElementById("roomList").innerHTML = "<p>Failed to load rooms.</p>";
             }
-        }
 
-        function joinRoom(roomId) {
-            window.location.href = `/voice-chat-room?roomId=${roomId}`;
-        }
+            function joinRoom(roomId) {
+                window.location.href = `/voice-chat-room?roomId=${roomId}`;
+            }
 
-
-        function logout() {
-            localStorage.removeItem("access_token");
-            window.location.href = "/";
-        }
-
-        fetchRooms();
+            fetchRooms();
+        });
     </script>
 
 </body>
-
 </html>

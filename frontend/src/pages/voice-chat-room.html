@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Disconcord - Voice & Chat</title>
+    <title>Disconcord - Voice Chat Room</title>
     <style>
-        body {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
             font-family: Arial, sans-serif;
+        }
+
+        body {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -17,116 +22,139 @@
             color: white;
         }
 
-        .chat-container {
-            width: 400px;
+        .voice-container {
             background: #23272A;
-            padding: 15px;
-            border-radius: 10px;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.6);
             text-align: center;
-            height: 400px;
-            overflow-y: auto;
-        }
-
-        .input-container {
+            width: 400px;
             display: flex;
-            width: 100%;
+            flex-direction: column;
+            gap: 15px;
         }
 
-        input {
-            flex-grow: 1;
-            padding: 8px;
-            border: none;
-            border-radius: 5px;
+        h2 {
+            margin-bottom: 5px;
+        }
+
+        .status {
+            font-size: 14px;
+            color: #aaaaaa;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-around;
         }
 
         button {
-            padding: 8px;
+            padding: 10px;
             background-color: #7289DA;
-            border: none;
             color: white;
+            border: none;
             cursor: pointer;
+            font-weight: bold;
             border-radius: 5px;
+            transition: 0.3s;
         }
 
         button:hover {
             background-color: #5B6EAE;
         }
+
+        .mute {
+            background-color: #f04747;
+        }
+
+        .mute:hover {
+            background-color: #c03232;
+        }
+
+        .leave {
+            background-color: #ff4444;
+        }
+
+        .leave:hover {
+            background-color: #cc0000;
+        }
     </style>
 </head>
-
 <body>
 
-    <h2>Voice Chat Room</h2>
-
-    <div class="chat-container" id="chat">
-        <p>Loading chat...</p>
-    </div>
-
-    <div class="input-container">
-        <input type="text" id="chatInput" placeholder="Type a message...">
-        <button onclick="sendMessage()">Send</button>
+    <div class="voice-container">
+        <h2>Voice Chat Room</h2>
+        <p id="room-id" class="status">🔊 Room ID: Loading...</p>
+        <p id="connection-status" class="status">🔄 Connecting...</p>
+        <div class="controls">
+            <button id="muteButton" class="mute">Mute</button>
+            <button id="leaveButton" class="leave">Leave Room</button>
+        </div>
     </div>
 
     <script>
-        const roomId = new URLSearchParams(window.location.search).get("room_id");
+        const params = new URLSearchParams(window.location.search);
+        const roomId = params.get("roomId");
         const accessToken = localStorage.getItem("access_token");
 
-        if (!accessToken) {
-            alert("You must be logged in!");
-            window.location.href = "/";
+        const roomIdElement = document.getElementById("room-id");
+        const statusElement = document.getElementById("connection-status");
+        const muteButton = document.getElementById("muteButton");
+        const leaveButton = document.getElementById("leaveButton");
+
+        let ws;
+        let isMuted = false;
+
+        if (!roomId || !accessToken) {
+            alert("Invalid access. Redirecting to voice chat list...");
+            window.location.href = "/voice-chat-list";
+        } else {
+            roomIdElement.textContent = `🔊 Room ID: ${roomId}`;
+            connectWebSocket();
         }
 
-        const ws = new WebSocket(`ws://localhost:8000/chat/ws/${roomId}?token=${accessToken}`);
+        function connectWebSocket() {
+            ws = new WebSocket(`ws://localhost:8000/voice/${roomId}?token=${accessToken}`);
 
-        ws.onmessage = (event) => {
-            const chatBox = document.getElementById("chat");
-            const message = document.createElement("p");
-            message.textContent = event.data;
-            chatBox.appendChild(message);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        };
+            ws.onopen = () => {
+                statusElement.textContent = "✅ Conectado";
+                console.log("✅ Connected to voice WebSocket");
+            };
 
-        async function sendMessage() {
-            const input = document.getElementById("chatInput");
-            ws.send(input.value);
-            input.value = "";
+            ws.onerror = (error) => {
+                console.error("⚠️ WebSocket error:", error);
+                statusElement.textContent = "⚠️ Erro de conexão";
+            };
+
+            ws.onclose = () => {
+                console.warn("⚠️ Disconnected from WebSocket, attempting to reconnect...");
+                statusElement.textContent = "⚠️ Reconectando...";
+                setTimeout(connectWebSocket, 3000);
+            };
         }
 
-        async function loadPreviousMessages() {
-            const response = await fetch(`/chat/${roomId}/messages`, {
-                method: "GET",
-                headers: { "Authorization": `Bearer ${accessToken}` }
-            });
-
-            const messages = await response.json();
-            const chatBox = document.getElementById("chat");
-            chatBox.innerHTML = "";
-
-            messages.reverse().forEach(msg => {
-                const message = document.createElement("p");
-                message.textContent = msg;
-                chatBox.appendChild(message);
-            });
-
-            chatBox.scrollTop = chatBox.scrollHeight;
+        function toggleMute() {
+            isMuted = !isMuted;
+            muteButton.textContent = isMuted ? "Unmute" : "Mute";
+            console.log(isMuted ? "🔇 Muted" : "🔊 Unmuted");
         }
 
-        async function requestStorageAccess() {
-            if (document.hasStorageAccess) {
-                try {
-                    await document.requestStorageAccess();
-                    console.log("✅ Storage access granted.");
-                } catch (error) {
-                    console.warn("⚠️ Storage access denied:", error);
-                }
+        function leaveRoom() {
+            ws.close();
+            window.location.href = "/voice-chat-list";
+        }
+
+        muteButton.addEventListener("click", toggleMute);
+        leaveButton.addEventListener("click", leaveRoom);
+
+        document.addEventListener("keypress", function (event) {
+            if (event.key.toLowerCase() === "m") {
+                toggleMute();
             }
-        }
-        requestStorageAccess();
+        });
 
-
-        loadPreviousMessages();
     </script>
 
 </body>
-
 </html>

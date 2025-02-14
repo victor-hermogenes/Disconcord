@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Disconcord - Chat Room</title>
     <style>
-        body {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
             font-family: Arial, sans-serif;
+        }
+
+        body {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -20,12 +25,17 @@
         .chat-container {
             background: #23272A;
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
-            width: 400px;
+            border-radius: 12px;
+            box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.6);
             text-align: center;
+            width: 400px;
             display: flex;
             flex-direction: column;
+            gap: 15px;
+        }
+
+        h2 {
+            margin-bottom: 10px;
         }
 
         .messages {
@@ -86,7 +96,6 @@
         }
     </style>
 </head>
-
 <body>
 
     <h2>Chat Room</h2>
@@ -118,12 +127,8 @@
             };
 
             ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    displayMessage(data.message, false);
-                } catch (error) {
-                    console.error("⚠️ Error parsing message:", error);
-                }
+                const messageData = JSON.parse(event.data);
+                displayMessage(messageData.message, messageData.username === getUsername());
             };
 
             ws.onerror = (error) => {
@@ -132,19 +137,18 @@
 
             ws.onclose = () => {
                 console.warn("⚠️ Disconnected from WebSocket, attempting to reconnect...");
-                setTimeout(connectWebSocket, 3000);
+                setTimeout(connectWebSocket, 3000); // Auto-reconnect
             };
         }
         connectWebSocket();
 
         function sendMessage() {
             const chatInput = document.getElementById("chatInput");
-            const message = chatInput.value.trim();
-            if (message === "") return;
+            if (chatInput.value.trim() === "") return;
 
-            const payload = JSON.stringify({ message: message });
-            ws.send(payload);
-
+            const messagePayload = JSON.stringify({ message: chatInput.value });
+            ws.send(messagePayload);
+            displayMessage(chatInput.value, true);
             chatInput.value = "";
         }
 
@@ -169,15 +173,19 @@
                 }
 
                 const messages = await response.json();
-                messages.reverse().forEach(msg => displayMessage(msg.message, false));
+                messages.reverse().forEach(msg => displayMessage(msg.message, msg.username === getUsername()));
             } catch (error) {
                 console.error("⚠️ Error loading messages:", error);
             }
         }
 
-        document.getElementById("chatInput").addEventListener("keydown", function (event) {
+        function getUsername() {
+            const tokenPayload = JSON.parse(atob(accessToken.split(".")[1]));
+            return tokenPayload.sub;
+        }
+
+        document.getElementById("chatInput").addEventListener("keypress", function(event) {
             if (event.key === "Enter") {
-                event.preventDefault(); 
                 sendMessage();
             }
         });
@@ -185,5 +193,4 @@
     </script>
 
 </body>
-
 </html>

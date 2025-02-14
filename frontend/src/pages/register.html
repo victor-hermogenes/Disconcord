@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Disconcord - Login</title>
+    <title>Disconcord - Register</title>
     <style>
         * {
             margin: 0;
@@ -21,7 +21,7 @@
             color: white;
         }
 
-        .login-container {
+        .register-container {
             background: #23272A;
             padding: 25px;
             border-radius: 12px;
@@ -75,81 +75,93 @@
             display: none;
         }
 
-        .register-link {
+        .login-link {
             font-size: 14px;
             margin-top: 10px;
         }
 
-        .register-link a {
+        .login-link a {
             color: #7289DA;
             text-decoration: none;
             font-weight: bold;
         }
 
-        .register-link a:hover {
+        .login-link a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
 
-    <div class="login-container">
-        <h2>Disconcord Login</h2>
+    <div class="register-container">
+        <h2>Create Your Account</h2>
         <input type="text" id="username" placeholder="Username">
+        <input type="email" id="email" placeholder="Email">
         <input type="password" id="password" placeholder="Password">
-        <button id="loginButton" onclick="login()">Login</button>
+        <input type="password" id="confirmPassword" placeholder="Confirm Password">
+        <button id="registerButton" onclick="register()">Register</button>
         <p id="error-message"></p>
-        <p class="register-link">Não tem conta? <a href="/register">Registre-se</a></p>
+        <p class="login-link">Já tem uma conta? <a href="/login">Faça login</a></p>
     </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const usernameInput = document.getElementById("username");
+            const emailInput = document.getElementById("email");
             const passwordInput = document.getElementById("password");
-            const loginButton = document.getElementById("loginButton");
+            const confirmPasswordInput = document.getElementById("confirmPassword");
+            const registerButton = document.getElementById("registerButton");
+            const errorMessage = document.getElementById("error-message");
 
-            // Focus username on page load
+            // Focus on username input by default
             usernameInput.focus();
 
-            // Enter key shortcut for login
+            // Enter key shortcut for registering
             document.addEventListener("keypress", function (event) {
                 if (event.key === "Enter") {
-                    login();
+                    register();
                 }
             });
 
-            async function login() {
+            async function register() {
                 const username = usernameInput.value.trim();
+                const email = emailInput.value.trim();
                 const password = passwordInput.value.trim();
-                const errorMessage = document.getElementById("error-message");
+                const confirmPassword = confirmPasswordInput.value.trim();
 
-                if (!username || !password) {
-                    errorMessage.innerText = "❌ Preencha todos os campos!";
-                    errorMessage.style.display = "block";
+                if (!username || !email || !password || !confirmPassword) {
+                    showError("❌ Preencha todos os campos!");
+                    return;
+                }
+
+                if (password !== confirmPassword) {
+                    showError("❌ As senhas não coincidem!");
                     return;
                 }
 
                 try {
-                    const response = await fetch("/auth/login", {
+                    const response = await fetch("/auth/register", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ username, password })
+                        body: JSON.stringify({ username, email, password })
                     });
 
                     const data = await response.json();
 
                     if (response.ok) {
-                        localStorage.setItem("access_token", data.access_token);
-                        window.location.href = "/voice-chat-list";
+                        window.location.href = "/login";
                     } else {
-                        errorMessage.innerText = `❌ ${data.detail}`;
-                        errorMessage.style.display = "block";
+                        showError(`❌ ${data.detail}`);
                     }
                 } catch (error) {
-                    console.error("⚠️ Error logging in:", error);
-                    errorMessage.innerText = "⚠️ Erro ao conectar ao servidor.";
-                    errorMessage.style.display = "block";
+                    console.error("⚠️ Error registering:", error);
+                    showError("⚠️ Erro ao conectar ao servidor.");
                 }
+            }
+
+            function showError(message) {
+                errorMessage.innerText = message;
+                errorMessage.style.display = "block";
             }
         });
     </script>

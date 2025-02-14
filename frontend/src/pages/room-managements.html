@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disconcord - Room Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #2C2F33;
+            color: white;
+        }
+
+        .room-container {
+            background: #23272A;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.6);
+            text-align: center;
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        h2 {
+            margin-bottom: 10px;
+        }
+
+        .rooms {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #1E2124;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .room-item {
+            padding: 10px;
+            background-color: #7289DA;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            transition: 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .room-item:hover {
+            background-color: #5B6EAE;
+        }
+
+        .actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        button {
+            padding: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+
+        .update-btn {
+            background-color: #ffcc00;
+            color: black;
+        }
+
+        .update-btn:hover {
+            background-color: #d4a900;
+        }
+
+        .delete-btn {
+            background-color: #ff4d4d;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+
+        .refresh, .create-room {
+            background-color: #43b581;
+            color: white;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .refresh:hover, .create-room:hover {
+            background-color: #36a166;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: none;
+            text-align: center;
+        }
+
+        .loading {
+            font-size: 14px;
+            color: #aaaaaa;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="room-container">
+        <h2>Manage Rooms</h2>
+
+        <input type="text" id="roomName" placeholder="Enter room name">
+        <button class="create-room" onclick="createRoom()">Create Room</button>
+
+        <div id="roomList" class="rooms">
+            <p class="loading">Loading rooms...</p>
+        </div>
+
+        <button class="refresh" onclick="fetchRooms()">Refresh List</button>
+    </div>
+
+    <script>
+        const accessToken = localStorage.getItem("access_token");
+
+        if (!accessToken) {
+            alert("Invalid access. Redirecting to login...");
+            window.location.href = "/login";
+        }
+
+        async function fetchRooms() {
+            const roomList = document.getElementById("roomList");
+            roomList.innerHTML = '<p class="loading">Loading rooms...</p>';
+
+            try {
+                const response = await fetch("/rooms", {
+                    headers: { "Authorization": `Bearer ${accessToken}` }
+                });
+
+                if (!response.ok) throw new Error("Falha em carregar o quarto");
+
+                const rooms = await response.json();
+                roomList.innerHTML = "";
+
+                if (rooms.length === 0) {
+                    roomList.innerHTML = '<p class="loading">No rooms available</p>';
+                    return;
+                }
+
+                rooms.forEach(room => {
+                    const roomItem = document.createElement("div");
+                    roomItem.classList.add("room-item");
+                    roomItem.innerHTML = `
+                        <span>${room.name}</span>
+                        <div class="actions">
+                            <button class="update-btn" onclick="updateRoom(${room.id})">✏️</button>
+                            <button class="delete-btn" onclick="deleteRoom(${room.id})">🗑️</button>
+                        </div>
+                    `;
+                    roomList.appendChild(roomItem);
+                });
+
+            } catch (error) {
+                console.error("⚠️ Error fetching rooms:", error);
+                roomList.innerHTML = '<p class="loading">⚠️ Unable to load rooms</p>';
+            }
+        }
+
+        async function createRoom() {
+            const roomName = document.getElementById("roomName").value.trim();
+            if (!roomName) return alert("Nome do quarto!");
+
+            try {
+                const response = await fetch("/rooms", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${accessToken}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ name: roomName })
+                });
+
+                if (!response.ok) throw new Error("Falha ao criar o quarto");
+
+                fetchRooms();
+                document.getElementById("roomName").value = "";
+            } catch (error) {
+                console.error("⚠️ Error creating room:", error);
+            }
+        }
+
+        async function updateRoom(roomId) {
+            const newName = prompt("Nome do novo quarto:");
+            if (!newName) return;
+
+            try {
+                const response = await fetch(`/rooms/${roomId}`, {
+                    method: "PUT",
+                    headers: {
+                        "Authorization": `Bearer ${accessToken}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ name: newName })
+                });
+
+                if (!response.ok) throw new Error("Failed to update room");
+
+                fetchRooms();
+            } catch (error) {
+                console.error("⚠️ Error updating room:", error);
+            }
+        }
+
+        async function deleteRoom(roomId) {
+            if (!confirm("Tem certeza que quer deletar esse quarto?")) return;
+
+            try {
+                const response = await fetch(`/rooms/${roomId}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${accessToken}` }
+                });
+
+                if (!response.ok) throw new Error("Falha ao deletar o quarto");
+
+                fetchRooms();
+            } catch (error) {
+                console.error("⚠️ Error deleting room:", error);
+            }
+        }
+
+        fetchRooms();
+        setInterval(fetchRooms, 10000);
+    </script>
+
+</body>
+</html>
