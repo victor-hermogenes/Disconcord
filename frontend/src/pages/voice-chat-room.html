@@ -93,7 +93,9 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import VoiceClient from "../services/voiceClient.js";
+
         const params = new URLSearchParams(window.location.search);
         const roomId = params.get("roomId");
         const accessToken = localStorage.getItem("access_token");
@@ -103,54 +105,30 @@
         const muteButton = document.getElementById("muteButton");
         const leaveButton = document.getElementById("leaveButton");
 
-        let ws;
-        let isMuted = false;
+        let voiceClient;
 
         if (!roomId || !accessToken) {
             alert("Invalid access. Redirecting to voice chat list...");
             window.location.href = "/voice-chat-list";
         } else {
             roomIdElement.textContent = `🔊 Room ID: ${roomId}`;
-            connectWebSocket();
+            voiceClient = new VoiceClient(roomId, accessToken, statusElement);
         }
 
-        function connectWebSocket() {
-            ws = new WebSocket(`ws://localhost:8000/voice/${roomId}?token=${accessToken}`);
+        muteButton.addEventListener("click", () => {
+            voiceClient.toggleMute();
+            muteButton.textContent = voiceClient.isMuted ? "Unmute" : "Mute";
+        });
 
-            ws.onopen = () => {
-                statusElement.textContent = "✅ Conectado";
-                console.log("✅ Connected to voice WebSocket");
-            };
-
-            ws.onerror = (error) => {
-                console.error("⚠️ WebSocket error:", error);
-                statusElement.textContent = "⚠️ Erro de conexão";
-            };
-
-            ws.onclose = () => {
-                console.warn("⚠️ Disconnected from WebSocket, attempting to reconnect...");
-                statusElement.textContent = "⚠️ Reconectando...";
-                setTimeout(connectWebSocket, 3000);
-            };
-        }
-
-        function toggleMute() {
-            isMuted = !isMuted;
-            muteButton.textContent = isMuted ? "Unmute" : "Mute";
-            console.log(isMuted ? "🔇 Muted" : "🔊 Unmuted");
-        }
-
-        function leaveRoom() {
-            ws.close();
+        leaveButton.addEventListener("click", () => {
+            voiceClient.leaveRoom();
             window.location.href = "/voice-chat-list";
-        }
-
-        muteButton.addEventListener("click", toggleMute);
-        leaveButton.addEventListener("click", leaveRoom);
+        });
 
         document.addEventListener("keypress", function (event) {
             if (event.key.toLowerCase() === "m") {
-                toggleMute();
+                voiceClient.toggleMute();
+                muteButton.textContent = voiceClient.isMuted ? "Unmute" : "Mute";
             }
         });
 

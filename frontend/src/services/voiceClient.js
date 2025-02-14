@@ -1,46 +1,77 @@
-const accessToken = localStorage.getItem("access_token");
-if (!accessToken) {
-    alert("Você deve estar logado para para acessar as voice rooms.");
-    window.location.href = "/login.html";
-}
+class VoiceClient {
+    constructor(roomId, token) {
+        this.roomId = roomId;
+        this.token = token;
+        this.ws = null;
+        this.stream = null;
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        this.sourceNodes = new Map();
+    }
 
-const ws = new WebSocket(`ws://localhost:8000/ws/voice?token=${accessToken}`);
+    connect() {
+        this.ws = new WebSocket(`ws://localhost:8000/voice/${this.roomId}?token=${this.token}`);
 
-ws.onopen = () => {
-    console.log("✅ Conectado ao servidor do WebSocket.");
-};
+        this.ws.onopen = () => {
+            console.log("🔊 Connected to voice server");
+            this.startAudioCapture();
+        };
 
-ws.onerror = (error) => {
-    console.error("❌ Erro no WebSocket:", error);
-};
+        this.ws.onmessage = (event) => {
+            this.handleIncomingAudio(event.data);
+        };
 
-ws.onclose = () => {
-    console.warn("⚠️ WebSocket fechato, tentando abrir novamente.");
-    setTimeout(() => {
-        location.reload();
-    }, 5000);
-};
+        this.ws.onerror = (error) => {
+            console.error("⚠️ WebSocket error:", error);
+        };
 
-async function fetchUserProfile() {
-    try {
-        const response = await fetch("/auth/me", {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${accessToken}`,
-                "Content-Type": "application/json"
-            }
-        });
+        this.ws.onclose = () => {
+            console.warn("❌ Disconnected from voice server");
+            this.cleanup();
+            setTimeout(() => this.connect(), 3000); // Auto-reconnect
+        };
+    }
 
-        if (!response.ok) {
-            throw new Error("Não autorizado.");
+    async startAudioCapture() {
+        try {
+            this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioTrack = this.stream.getAudioTracks()[0];
+            const mediaRecorder = new MediaRecorder(this.stream);
+            mediaRecorder.start(250); // Capture small audio chunks
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(event.data);
+                }
+            };
+
+            console.log("🎤 Audio capture started");
+        } catch (error) {
+            console.error("⚠️ Error accessing microphone:", error);
         }
+    }
 
-        const data = await response.json();
-        console.log("✅ Perfil de usuário:", data);
-    } catch (error) {
-        console.error("❌ Erro ao pegar perfil:", error);
-        window.location.href = "/login.html";
+    handleIncomingAudio(data) {
+        const audioBlob = new Blob([data], { type: "audio/webm" });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.play();
+    }
+
+    cleanup() {
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
+        }
+    }
+
+    disconnect() {
+        this.cleanup();
+        console.log("🔇 Disconnected from voice chat");
     }
 }
 
-fetchUserProfile();
+export default VoiceClient;
