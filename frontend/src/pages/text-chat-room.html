@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disconcord - Chat Room</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #2C2F33;
+            color: white;
+        }
+
+        .chat-container {
+            background: #23272A;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+            width: 400px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #1E2124;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .message {
+            padding: 8px;
+            border-radius: 5px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            background-color: #7289DA;
+            align-self: flex-end;
+        }
+
+        .message.other {
+            background-color: #4F545C;
+            align-self: flex-start;
+        }
+
+        .input-container {
+            display: flex;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #7289DA;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 5px;
+            margin-left: 5px;
+        }
+
+        button:hover {
+            background-color: #5B6EAE;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Chat Room</h2>
+    <div class="chat-container">
+        <div class="messages" id="chatMessages"></div>
+        <div class="input-container">
+            <input type="text" id="chatInput" placeholder="Type a message..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const roomId = params.get("roomId");
+        const accessToken = localStorage.getItem("access_token");
+
+        if (!roomId || !accessToken) {
+            alert("Invalid access. Redirecting to voice chat...");
+            window.location.href = "/voice-chat-list";
+        }
+
+        let ws;
+        function connectWebSocket() {
+            ws = new WebSocket(`ws://localhost:8000/chat/ws/${roomId}?token=${accessToken}`);
+
+            ws.onopen = () => {
+                console.log("✅ Connected to chat WebSocket");
+                loadPreviousMessages();
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    displayMessage(data.message, false);
+                } catch (error) {
+                    console.error("⚠️ Error parsing message:", error);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error("⚠️ WebSocket error:", error);
+            };
+
+            ws.onclose = () => {
+                console.warn("⚠️ Disconnected from WebSocket, attempting to reconnect...");
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+        connectWebSocket();
+
+        function sendMessage() {
+            const chatInput = document.getElementById("chatInput");
+            const message = chatInput.value.trim();
+            if (message === "") return;
+
+            const payload = JSON.stringify({ message: message });
+            ws.send(payload);
+
+            chatInput.value = "";
+        }
+
+        function displayMessage(text, isUser) {
+            const chatMessages = document.getElementById("chatMessages");
+            const message = document.createElement("div");
+            message.innerText = text;
+            message.classList.add("message", isUser ? "user" : "other");
+            chatMessages.appendChild(message);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function loadPreviousMessages() {
+            try {
+                const response = await fetch(`/chat/${roomId}/messages`, {
+                    method: "GET",
+                    headers: { "Authorization": `Bearer ${accessToken}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to load messages");
+                }
+
+                const messages = await response.json();
+                messages.reverse().forEach(msg => displayMessage(msg.message, false));
+            } catch (error) {
+                console.error("⚠️ Error loading messages:", error);
+            }
+        }
+
+        document.getElementById("chatInput").addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault(); 
+                sendMessage();
+            }
+        });
+
+    </script>
+
+</body>
+
+</html>
