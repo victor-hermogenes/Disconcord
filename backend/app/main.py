@@ -1,47 +1,30 @@
-from fastapi import FastAPI, Request
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.routes.authRoutes import router as auth_router
-from backend.app.routes.usersRoutes import router as users_router
-from backend.app.routes.roomsRoutes import router as rooms_router
-from backend.app.routes.voiceRoutes import router as voice_router
-from backend.app.routes.chatRoutes import router as chat_router
-from typing import Optional
+from backend.app.routes import authRoutes, chatRoutes, usersRoutes, roomsRoutes, voiceRoutes
+from backend.app.core.database import Base, engine_sync
+
+Base.metadata.create_all(bind=engine_sync)
 
 app = FastAPI(
     title="Disconcord API",
-    version="1.0.0",
-    description="A Discord Clone API with WebSockets and Authentication"
+    description="Backend API for Disconcord, a lightweight communication platform.",
+    version="1.0.0"
 )
-
-app.mount("/static", StaticFiles(directory="frontend/src/services"), name="static")
-templates = Jinja2Templates(directory="frontend/src/pages") 
-
-app.include_router(auth_router)
-app.include_router(users_router)
-app.include_router(rooms_router)
-app.include_router(voice_router)
-app.include_router(chat_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000"],
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+app.include_router(authRoutes.router)
+app.include_router(chatRoutes.router)
+app.include_router(usersRoutes.router)
+app.include_router(roomsRoutes.router)
+app.include_router(voiceRoutes.router)
 
-@app.get("/voice-chat-list")
-async def voice_chat_list_page(request: Request):
-    return templates.TemplateResponse("voice-chat-list.html", {"request": request}) 
-
-@app.get("/voice-chat-room")
-async def voice_chat_room_page(request: Request, roomId: Optional[int] = None):
-    if roomId is None:
-        return templates.TemplateResponse("voice-chat-room.html", {"request": request, "roomId": None})
-    return templates.TemplateResponse("voice-chat-room.html", {"request": request, "roomId": roomId})
+@app.get("/", tags=["Health Check"])
+def root():
+    return {"message": "Disconcord API is running!"}
