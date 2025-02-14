@@ -1,0 +1,22 @@
+{
+    "name": "disconcord-frontend",
+    "version": "1.0.0",
+    "description": "Frontend for Disconcord - A voice and text chat application",
+    "main": "index.js",
+    "scripts": {
+        "start": "npx http-server ./ -o",
+        "dev": "vite",
+        "build": "vite build"
+    },
+    "dependencies": {
+        "vite": "^4.0.0"
+    },
+    "devDependencies": {
+        "eslint": "^8.0.0",
+        "prettier": "^3.0.0"
+    },
+    "type": "module",
+    "keywords": [],
+    "author": "",
+    "license": "ISC"
+}

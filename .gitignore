@@ -176,3 +176,9 @@ migrations/versions
 # localhost config
 localhost-key.pem
 localhost.pem
+
+# Node modules
+node_modules
+
+#package-lock.json
+package-lock.json
